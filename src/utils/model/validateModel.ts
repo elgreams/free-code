@@ -41,10 +41,19 @@ export async function validateModel(
     return { valid: true }
   }
 
-  // Check if it's a known Codex/OpenAI model (skip Anthropic API validation)
-  const { isCodexSubscriber } = await import('../auth.js')
+  // GPT/Codex models are validated against Codex auth, not the Anthropic API.
+  // Gating on auth (not active provider) lets users select GPT models without
+  // CLAUDE_CODE_USE_OPENAI=1. The Codex backend is the source of truth for
+  // whether a specific id is usable, so we don't validate it here.
+  const { hasCodexAuth } = await import('../auth.js')
   const { isCodexModel } = await import('../../services/api/codex-fetch-adapter.js')
-  if (isCodexSubscriber() && isCodexModel(normalizedModel)) {
+  if (isCodexModel(normalizedModel)) {
+    if (!hasCodexAuth()) {
+      return {
+        valid: false,
+        error: `Log in to ChatGPT/Codex before selecting '${normalizedModel}'.`,
+      }
+    }
     validModelCache.set(normalizedModel, true)
     return { valid: true }
   }

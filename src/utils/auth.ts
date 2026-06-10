@@ -1626,6 +1626,19 @@ export function isClaudeAISubscriber(): boolean {
   return shouldUseClaudeAIAuth(getClaudeAIOAuthTokens()?.scopes)
 }
 
+/**
+ * Whether valid Codex/OpenAI OAuth tokens exist, independent of the active
+ * provider. Use this for capability checks (can the user select/validate a GPT
+ * model?) so they don't require `CLAUDE_CODE_USE_OPENAI=1`.
+ *
+ * `isCodexSubscriber()` keeps its narrower active-provider semantics for the
+ * routing/default paths that still depend on the env var.
+ */
+export function hasCodexAuth(): boolean {
+  const tokens = getCodexOAuthTokens()
+  return !!tokens?.accessToken
+}
+
 export function isCodexSubscriber(): boolean {
   // Only treat as Codex subscriber when explicitly using OpenAI provider
   if (getAPIProvider() !== 'openai') {
@@ -1633,8 +1646,7 @@ export function isCodexSubscriber(): boolean {
   }
 
   // Verify we actually have valid Codex tokens
-  const tokens = getCodexOAuthTokens()
-  return !!tokens?.accessToken
+  return hasCodexAuth()
 }
 
 /**
