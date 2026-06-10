@@ -17,6 +17,7 @@
     "build:dev": "bun run ./scripts/build.ts --dev",
     "build:dev:full": "bun run ./scripts/build.ts --dev --feature-set=dev-full",
     "compile": "bun run ./scripts/build.ts --compile",
+    "compile:windows": "bun run ./scripts/build.ts --compile --target=windows --feature=POWERSHELL_AUTO_MODE",
     "dev": "bun run ./src/entrypoints/cli.tsx"
   },
   "dependencies": {

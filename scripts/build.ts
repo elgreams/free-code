@@ -9,6 +9,9 @@ const pkg = await Bun.file(new URL('../package.json', import.meta.url)).json() a
 const args = process.argv.slice(2)
 const compile = args.includes('--compile')
 const dev = args.includes('--dev')
+const targetArg = args.find(arg => arg.startsWith('--target='))?.slice('--target='.length)
+const target = targetArg === 'windows' ? 'bun-windows-x64' : 'bun'
+const windows = targetArg === 'windows'
 
 const fullExperimentalFeatures = [
   'AGENT_MEMORY_SNAPSHOT',
@@ -109,13 +112,17 @@ for (let i = 0; i < args.length; i += 1) {
 }
 const features = [...featureSet]
 
-const outfile = compile
+const outfile = windows
   ? dev
-    ? './dist/cli-dev'
-    : './dist/cli'
-  : dev
-    ? './cli-dev'
-    : './cli'
+    ? './dist/cli-dev.exe'
+    : './dist/cli.exe'
+  : compile
+    ? dev
+      ? './dist/cli-dev'
+      : './dist/cli'
+    : dev
+      ? './cli-dev'
+      : './cli'
 const buildTime = new Date().toISOString()
 const version = dev ? getDevVersion(pkg.version) : pkg.version
 
@@ -164,13 +171,13 @@ const cmd = [
   './src/entrypoints/cli.tsx',
   '--compile',
   '--target',
-  'bun',
+  target,
   '--format',
   'esm',
   '--outfile',
   outfile,
   '--minify',
-  '--bytecode',
+  ...(windows ? [] : ['--bytecode']),
   '--packages',
   'bundle',
   '--conditions',

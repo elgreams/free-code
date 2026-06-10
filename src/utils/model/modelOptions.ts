@@ -210,6 +210,15 @@ function getHaikuOption(): ModelOption {
 }
 
 // OpenAI Codex model options
+function getGpt55Option(): ModelOption {
+  return {
+    value: 'gpt-5.5',
+    label: 'GPT-5.5',
+    description: 'GPT-5.5 · Latest frontier model for complex agentic coding',
+    descriptionForModel: 'GPT-5.5 - latest frontier model for complex multi-step agentic coding',
+  }
+}
+
 function getGpt54Option(): ModelOption {
   return {
     value: 'gpt-5.4',
@@ -320,6 +329,7 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
   if (isCodexSubscriber()) {
     return [
       getDefaultOptionForUser(),
+      getGpt55Option(),
       getGpt54Option(),
       getGpt53CodexOption(),
       getGpt54MiniOption(),
