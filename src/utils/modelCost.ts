@@ -3,6 +3,7 @@ import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 
 import { logEvent } from 'src/services/analytics/index.js'
 import { setHasUnknownModelCost } from '../bootstrap/state.js'
 import { isFastModeEnabled } from './fastMode.js'
+import { isCodexModel } from '../services/api/codex-fetch-adapter.js'
 import {
   CLAUDE_3_5_HAIKU_CONFIG,
   CLAUDE_3_5_V2_SONNET_CONFIG,
@@ -88,6 +89,17 @@ export const COST_HAIKU_45 = {
 
 const DEFAULT_UNKNOWN_MODEL_COST = COST_TIER_5_25
 
+// GPT/Codex via a ChatGPT subscription is billed as a flat subscription, not
+// per token, so marginal token cost is $0. Avoids mislabeling GPT usage with
+// Claude pricing in /cost and the status line.
+export const COST_CODEX_SUBSCRIPTION = {
+  inputTokens: 0,
+  outputTokens: 0,
+  promptCacheWriteTokens: 0,
+  promptCacheReadTokens: 0,
+  webSearchRequests: 0,
+} as const satisfies ModelCosts
+
 /**
  * Get the cost tier for Opus 4.6 based on fast mode.
  */
@@ -142,6 +154,12 @@ function tokensToUSDCost(modelCosts: ModelCosts, usage: Usage): number {
 }
 
 export function getModelCosts(model: string, usage: Usage): ModelCosts {
+  // GPT/Codex models are subscription-billed: no per-token cost, and not an
+  // "unknown" model we should warn about.
+  if (isCodexModel(model)) {
+    return COST_CODEX_SUBSCRIPTION
+  }
+
   const shortName = getCanonicalName(model)
 
   // Check if this is an Opus 4.6 model with fast mode active.
