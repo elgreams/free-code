@@ -314,7 +314,8 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
 
   // Both-auth: Codex tokens exist but we're not in active OpenAI mode. Append
   // GPT/Codex models so they're visible/selectable from the same menu.
-  // (Selecting one still needs CLAUDE_CODE_USE_OPENAI=1 to route until Commit 4.)
+  // Selecting one now routes to Codex per-model (no env var needed) — see the
+  // model-based routing in services/api/client.ts.
   if (hasCodexAuth()) {
     options.push(...getStaticCodexModelOptions())
   }

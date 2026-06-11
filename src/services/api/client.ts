@@ -35,7 +35,7 @@ import {
   getVertexRegionForModel,
   isEnvTruthy,
 } from '../../utils/envUtils.js'
-import { createCodexFetch } from './codex-fetch-adapter.js'
+import { createCodexFetch, isCodexModel } from './codex-fetch-adapter.js'
 
 /**
  * Environment variables for different client types:
@@ -306,18 +306,24 @@ export async function getAnthropicClient({
   }
 
   // ── Codex (OpenAI) provider via fetch adapter ─────────────────────
-  if (isCodexSubscriber()) {
-    const codexTokens = getCodexOAuthTokens()
-    if (codexTokens?.accessToken) {
-      const codexFetch = createCodexFetch(codexTokens.accessToken)
-      const clientConfig: ConstructorParameters<typeof Anthropic>[0] = {
-        apiKey: 'codex-placeholder', // SDK requires a key but the fetch adapter handles auth
-        ...ARGS,
-        fetch: codexFetch as unknown as typeof globalThis.fetch,
-        ...(isDebugToStdErr() && { logger: createStderrLogger() }),
-      }
-      return new Anthropic(clientConfig)
+  // Route to Codex when valid Codex tokens exist AND either the app is in
+  // active OpenAI mode (CLAUDE_CODE_USE_OPENAI=1) OR the selected model is a
+  // GPT/Codex model. The latter is per-model dynamic routing: selecting a GPT
+  // model from /model routes here without the env var. Requests carrying a
+  // Claude model (e.g. internal side queries) fall through to Anthropic below.
+  const codexTokens = getCodexOAuthTokens()
+  const routeToCodex =
+    !!codexTokens?.accessToken &&
+    (isCodexSubscriber() || (!!model && isCodexModel(model)))
+  if (routeToCodex) {
+    const codexFetch = createCodexFetch(codexTokens!.accessToken)
+    const clientConfig: ConstructorParameters<typeof Anthropic>[0] = {
+      apiKey: 'codex-placeholder', // SDK requires a key but the fetch adapter handles auth
+      ...ARGS,
+      fetch: codexFetch as unknown as typeof globalThis.fetch,
+      ...(isDebugToStdErr() && { logger: createStderrLogger() }),
     }
+    return new Anthropic(clientConfig)
   }
 
   // Determine authentication method based on available tokens
