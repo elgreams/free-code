@@ -180,7 +180,9 @@ export function getRuntimeMainLoopModel(params: {
  */
 export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
   if (isCodexSubscriber()) {
-    return getModelStrings().gpt53codex
+    // gpt-5.5 is the documented default for ChatGPT-account Codex; gpt-5.3-codex
+    // is deprecated/unsupported for ChatGPT accounts.
+    return getModelStrings().gpt55
   }
 
   // Ants default to defaultModel from flag config, or Opus 1M if not configured
@@ -307,7 +309,7 @@ export function getClaudeAiUserDefaultModelDescription(
   fastMode = false,
 ): string {
   if (isCodexSubscriber()) {
-    return 'GPT-5.3 Codex · Optimized for code generation and understanding'
+    return 'GPT-5.5 · Newest frontier model for complex coding'
   }
   if (isMaxSubscriber() || isTeamPremiumSubscriber()) {
     if (isOpus1mMergeEnabled()) {
@@ -372,12 +374,9 @@ export function renderModelSetting(setting: ModelName | ModelAlias): string {
 export function getPublicModelDisplayName(model: ModelName): string | null {
   if (model.includes('gpt-') || model.includes('codex')) {
     if (model === 'gpt-5.5') return 'GPT 5.5'
-    if (model === 'gpt-5.2-codex') return 'Codex 5.2'
-    if (model === 'gpt-5.1-codex') return 'Codex 5.1'
-    if (model === 'gpt-5.1-codex-mini') return 'Codex 5.1 Mini'
-    if (model === 'gpt-5.1-codex-max') return 'Codex 5.1 Max'
+    if (model === 'gpt-5.4-mini') return 'GPT 5.4 Mini'
     if (model === 'gpt-5.4') return 'GPT 5.4'
-    if (model === 'gpt-5.2') return 'GPT 5.2'
+    // Fall back to the raw id for any other (e.g. account-specific or newer) model.
     return model
   }
 
