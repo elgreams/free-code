@@ -311,10 +311,20 @@ export async function getAnthropicClient({
   // GPT/Codex model. The latter is per-model dynamic routing: selecting a GPT
   // model from /model routes here without the env var. Requests carrying a
   // Claude model (e.g. internal side queries) fall through to Anthropic below.
+  // Per-model routing so a user logged into BOTH Claude and ChatGPT can switch
+  // freely: a selected Codex model always routes to Codex; a selected Claude
+  // model routes to Anthropic when Claude auth exists — even if
+  // CLAUDE_CODE_USE_OPENAI is set. The env flag still forces Codex for
+  // codex-only setups and unspecified-model requests (e.g. internal side
+  // queries) so those keep working without Claude auth.
   const codexTokens = getCodexOAuthTokens()
+  const selectedIsCodexModel = !!model && isCodexModel(model)
+  const selectedIsClaudeModel = !!model && !isCodexModel(model)
   const routeToCodex =
     !!codexTokens?.accessToken &&
-    (isCodexSubscriber() || (!!model && isCodexModel(model)))
+    (selectedIsCodexModel ||
+      (isCodexSubscriber() &&
+        !(selectedIsClaudeModel && isClaudeAISubscriber())))
   if (routeToCodex) {
     const codexFetch = createCodexFetch(codexTokens!.accessToken)
     const clientConfig: ConstructorParameters<typeof Anthropic>[0] = {
