@@ -15,7 +15,6 @@
   <a href="https://github.com/elgreams/free-code/stargazers"><img src="https://img.shields.io/github/stars/elgreams/free-code?style=flat-square" alt="Stars" /></a>
   <a href="https://github.com/elgreams/free-code/issues"><img src="https://img.shields.io/github/issues/elgreams/free-code?style=flat-square" alt="Issues" /></a>
   <a href="https://github.com/elgreams/free-code/blob/main/FEATURES.md"><img src="https://img.shields.io/badge/features-88%20flags-orange?style=flat-square" alt="Feature Flags" /></a>
-  <a href="#ipfs-mirror"><img src="https://img.shields.io/badge/IPFS-mirrored-teal?style=flat-square" alt="IPFS" /></a>
 </p>
 
 ---
@@ -43,7 +42,6 @@ Then run `free-code` and use the `/login` command to authenticate with your pref
 - [Experimental Features](#experimental-features)
 - [Project Structure](#project-structure)
 - [Tech Stack](#tech-stack)
-- [IPFS Mirror](#ipfs-mirror)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -341,19 +339,6 @@ src/
 | **Code Search** | ripgrep (bundled) |
 | **Protocols** | MCP, LSP |
 | **APIs** | Anthropic Messages, OpenAI Codex, AWS Bedrock, Google Vertex AI |
-
----
-
-## IPFS Mirror
-
-A full copy of this repository is permanently pinned on IPFS via Filecoin:
-
-| | |
-|---|---|
-| **CID** | `bafybeiegvef3dt24n2znnnmzcud2vxat7y7rl5ikz7y7yoglxappim54bm` |
-| **Gateway** | https://w3s.link/ipfs/bafybeiegvef3dt24n2znnnmzcud2vxat7y7rl5ikz7y7yoglxappim54bm |
-
-If this repo gets taken down, the code lives on.
 
 ---
 
