@@ -12,9 +12,9 @@
 
 <p align="center">
   <a href="#quick-install"><img src="https://img.shields.io/badge/install-one--liner-blue?style=flat-square" alt="Install" /></a>
-  <a href="https://github.com/paoloanzn/free-code/stargazers"><img src="https://img.shields.io/github/stars/paoloanzn/free-code?style=flat-square" alt="Stars" /></a>
-  <a href="https://github.com/paoloanzn/free-code/issues"><img src="https://img.shields.io/github/issues/paoloanzn/free-code?style=flat-square" alt="Issues" /></a>
-  <a href="https://github.com/paoloanzn/free-code/blob/main/FEATURES.md"><img src="https://img.shields.io/badge/features-88%20flags-orange?style=flat-square" alt="Feature Flags" /></a>
+  <a href="https://github.com/elgreams/free-code/stargazers"><img src="https://img.shields.io/github/stars/elgreams/free-code?style=flat-square" alt="Stars" /></a>
+  <a href="https://github.com/elgreams/free-code/issues"><img src="https://img.shields.io/github/issues/elgreams/free-code?style=flat-square" alt="Issues" /></a>
+  <a href="https://github.com/elgreams/free-code/blob/main/FEATURES.md"><img src="https://img.shields.io/badge/features-88%20flags-orange?style=flat-square" alt="Feature Flags" /></a>
   <a href="#ipfs-mirror"><img src="https://img.shields.io/badge/IPFS-mirrored-teal?style=flat-square" alt="IPFS" /></a>
 </p>
 
@@ -23,7 +23,7 @@
 ## Quick Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/paoloanzn/free-code/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/elgreams/free-code/main/install.sh | bash
 ```
 
 Checks your system, installs Bun if needed, clones the repo, builds with all experimental features enabled, and symlinks `free-code` on your PATH.
@@ -77,32 +77,48 @@ Claude Code ships with 88 feature flags gated behind `bun:bundle` compile-time s
 
 ## Model Providers
 
-free-code supports **five API providers** out of the box. Set the corresponding environment variable to switch providers -- no code changes needed.
+free-code supports **five API providers** out of the box. Anthropic and OpenAI/ChatGPT
+switch live from the `/model` menu (sign in once with `/login` and/or
+`/login-chatgpt`); Bedrock, Vertex, and Foundry are selected via environment variable.
 
 ### Anthropic (Direct API) -- Default
 
-Use Anthropic's first-party API directly.
+Use Anthropic's first-party API directly. Pick any of these from the `/model` menu.
 
 | Model | ID |
 |---|---|
-| Claude Opus 4.6 | `claude-opus-4-6` |
+| Claude Fable 5 | `claude-fable-5` |
+| Claude Opus 4.8 | `claude-opus-4-8` |
+| Claude Opus 4.7 | `claude-opus-4-7` |
+| Claude Opus 4.6 (default) | `claude-opus-4-6` |
 | Claude Sonnet 4.6 | `claude-sonnet-4-6` |
 | Claude Haiku 4.5 | `claude-haiku-4-5` |
 
-### OpenAI Codex
+### OpenAI Codex (ChatGPT)
 
-Use OpenAI's Codex models for code generation. Requires a Codex subscription.
+Use GPT models through a ChatGPT (Plus/Pro/Business) subscription. Sign in with
+`/login-chatgpt`, then pick a GPT model from `/model` — **no env var required**.
+You can be logged into Claude **and** ChatGPT at the same time and switch between
+them per request straight from `/model`.
 
 | Model | ID |
 |---|---|
-| GPT-5.3 Codex (recommended) | `gpt-5.3-codex` |
+| GPT-5.5 (recommended) | `gpt-5.5` |
 | GPT-5.4 | `gpt-5.4` |
 | GPT-5.4 Mini | `gpt-5.4-mini` |
 
-```bash
-export CLAUDE_CODE_USE_OPENAI=1
-free-code
+> ChatGPT-subscription accounts only support the general GPT line above; the
+> dedicated `*-codex` variants are API-key-only and will be rejected. `/model`
+> shows the models your account can actually use.
+
+```text
+/login-chatgpt     # sign in with ChatGPT
+/model             # pick a GPT model (or a Claude model — switch any time)
+/logout-chatgpt    # sign out of ChatGPT
 ```
+
+The legacy `CLAUDE_CODE_USE_OPENAI=1` env var still works (forces OpenAI globally),
+but it's no longer necessary — per-model routing handles everything.
 
 ### AWS Bedrock
 
@@ -151,8 +167,8 @@ Supports custom deployment IDs as model names.
 
 | Provider | Env Variable | Auth Method |
 |---|---|---|
-| Anthropic (default) | -- | `ANTHROPIC_API_KEY` or OAuth |
-| OpenAI Codex | `CLAUDE_CODE_USE_OPENAI=1` | OAuth via OpenAI |
+| Anthropic (default) | -- | `ANTHROPIC_API_KEY` or OAuth (`/login`) |
+| OpenAI Codex (ChatGPT) | -- (optional `CLAUDE_CODE_USE_OPENAI=1`) | OAuth (`/login-chatgpt`) |
 | AWS Bedrock | `CLAUDE_CODE_USE_BEDROCK=1` | AWS credentials |
 | Google Vertex AI | `CLAUDE_CODE_USE_VERTEX=1` | `gcloud` ADC |
 | Anthropic Foundry | `CLAUDE_CODE_USE_FOUNDRY=1` | `ANTHROPIC_FOUNDRY_API_KEY` |
@@ -175,7 +191,7 @@ curl -fsSL https://bun.sh/install | bash
 ## Build
 
 ```bash
-git clone https://github.com/paoloanzn/free-code.git
+git clone https://github.com/elgreams/free-code.git
 cd free-code
 bun build
 ./cli

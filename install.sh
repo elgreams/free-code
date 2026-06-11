@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # free-code installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/paoloanzn/free-code/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/elgreams/free-code/main/install.sh | bash
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -12,7 +12,7 @@ BOLD='\033[1m'
 DIM='\033[2m'
 RESET='\033[0m'
 
-REPO="https://github.com/paoloanzn/free-code.git"
+REPO="https://github.com/elgreams/free-code.git"
 INSTALL_DIR="$HOME/free-code"
 BUN_MIN_VERSION="1.3.11"
 
