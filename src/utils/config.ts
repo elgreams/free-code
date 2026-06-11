@@ -250,6 +250,9 @@ export type GlobalConfig = {
   // Learned from real 400 responses and excluded from the /model menu, so the
   // list self-heals even when remote discovery is unavailable.
   codexUnsupportedModels?: string[]
+  // Whether the browser-automation MCP server is enabled (default off).
+  // Toggled by /browser; read at startup to inject the server.
+  browserEnabled?: boolean
   iterm2KeyBindingInstalled?: boolean // Legacy - keeping for backward compatibility
   editorMode?: EditorMode
   bypassPermissionsModeAccepted?: boolean

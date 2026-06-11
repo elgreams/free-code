@@ -1631,6 +1631,22 @@ async function run(): Promise<CommanderCommand> {
       }
     }
 
+    // Browser automation (opt-in via /browser, default off). Injects a built-in
+    // MCP server that spawns this binary's --browser-mcp entrypoint (a custom
+    // CDP server driving installed Chrome; no Node/npx/Playwright).
+    try {
+      const { isBrowserEnabled, getBrowserMcpServerConfig } =
+        await import('./utils/browserMcp/setup.js');
+      if (isBrowserEnabled()) {
+        dynamicMcpConfig = {
+          ...dynamicMcpConfig,
+          ...getBrowserMcpServerConfig()
+        };
+      }
+    } catch (error) {
+      logForDebugging(`[browser] setup failed: ${error}`);
+    }
+
     // Store additional directories for CLAUDE.md loading (controlled by env var)
     setAdditionalDirectoriesForClaudeMd(addDir);
 

@@ -79,6 +79,14 @@ async function main(): Promise<void> {
     console.log(prompt.join('\n'));
     return;
   }
+  if (process.argv[2] === '--browser-mcp') {
+    profileCheckpoint('cli_browser_mcp_path');
+    const {
+      runBrowserMcpServer
+    } = await import('../utils/browserMcp/server.js');
+    await runBrowserMcpServer();
+    return;
+  }
   if (process.argv[2] === '--claude-in-chrome-mcp') {
     profileCheckpoint('cli_claude_in_chrome_mcp_path');
     const {
