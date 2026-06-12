@@ -2,8 +2,6 @@ node_modules/
 dist/
 cli
 cli-dev
-rg
-rg.exe
 openclaw/
 DYNAMIC_MODEL_SWITCHING_PLAN.md
 DYNAMIC_MODEL_SWITCHING_ROADMAP.md

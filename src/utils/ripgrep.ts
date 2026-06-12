@@ -1,6 +1,13 @@
 import type { ChildProcess, ExecFileException } from 'child_process'
 import { execFile, spawn } from 'child_process'
-import { existsSync } from 'fs'
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  renameSync,
+  writeFileSync,
+} from 'fs'
+import { gunzipSync } from 'zlib'
 import memoize from 'lodash-es/memoize.js'
 import { homedir } from 'os'
 import * as path from 'path'
@@ -8,6 +15,12 @@ import { logEvent } from 'src/services/analytics/index.js'
 import { fileURLToPath } from 'url'
 import { isInBundledMode } from './bundledMode.js'
 import { logForDebugging } from './debug.js'
+import { getClaudeConfigHomeDir } from './envUtils.js'
+import {
+  RG_GZIP_B64,
+  RG_HASH,
+  RG_PLATFORM,
+} from './ripgrepEmbedded.generated.js'
 import { isEnvDefinedFalsy } from './envUtils.js'
 import { execFileNoThrow } from './execFileNoThrow.js'
 import { findExecutable } from './findExecutable.js'
@@ -27,6 +40,50 @@ type RipgrepConfig = {
   command: string
   args: string[]
   argv0?: string
+}
+
+/**
+ * Single-file builds embed the platform's ripgrep binary (gzip + base64, code-
+ * bundled so it doesn't populate Bun.embeddedFiles / flip isInBundledMode).
+ * On first use it self-extracts to `<config>/bin/rg-<hash>[.exe]` and returns
+ * that path. The hash in the name means a new build extracts a fresh copy and
+ * old ones are simply ignored. Returns null when nothing is embedded (dev/
+ * source runs) or the embed is for a different platform, so callers fall back
+ * to a system or vendored rg.
+ */
+let extractedRgPath: string | null | undefined
+function ensureExtractedRipgrep(): string | null {
+  if (extractedRgPath !== undefined) {
+    return extractedRgPath
+  }
+  extractedRgPath = null
+  try {
+    const platKey = `${process.arch}-${
+      process.platform === 'win32' ? 'win32' : process.platform
+    }`
+    if (!RG_GZIP_B64 || RG_PLATFORM !== platKey) {
+      return null
+    }
+    const dir = path.join(getClaudeConfigHomeDir(), 'bin')
+    const name =
+      process.platform === 'win32' ? `rg-${RG_HASH}.exe` : `rg-${RG_HASH}`
+    const dest = path.join(dir, name)
+    if (!existsSync(dest)) {
+      mkdirSync(dir, { recursive: true })
+      const bytes = gunzipSync(Buffer.from(RG_GZIP_B64, 'base64'))
+      // Write to a unique temp path then rename, so a concurrent process can't
+      // observe a half-written (non-executable) binary.
+      const tmp = `${dest}.${process.pid}.tmp`
+      writeFileSync(tmp, bytes)
+      chmodSync(tmp, 0o755)
+      renameSync(tmp, dest)
+    }
+    extractedRgPath = dest
+  } catch (error) {
+    logForDebugging(`[ripgrep] embedded extract failed: ${error}`)
+    extractedRgPath = null
+  }
+  return extractedRgPath
 }
 
 const getRipgrepConfig = memoize((): RipgrepConfig => {
@@ -56,13 +113,18 @@ const getRipgrepConfig = memoize((): RipgrepConfig => {
     }
   }
 
-  // Compiled-standalone sidecar: a real rg binary shipped next to the
-  // executable (build.ts copies it in). Required because this fork compiles
-  // with standard Bun, which has neither the virtual-FS `vendor/` assets below
-  // (they resolve into Bun's read-only ~BUN/root FS and can't be exec'd) nor
-  // the argv0-dispatch embedded ripgrep of Anthropic's Bun fork. Without this,
-  // file search (Grep/Glob/file-index) fails with ENOENT on machines that lack
-  // a system `rg` — notably the Windows build.
+  // Single-file build: the embedded rg self-extracts to the config dir on first
+  // use. Required because this fork compiles with standard Bun, which has
+  // neither the virtual-FS `vendor/` assets below (they resolve into Bun's
+  // read-only ~BUN/root FS and can't be exec'd) nor the argv0-dispatch embedded
+  // ripgrep of Anthropic's Bun fork. Without this, file search fails with
+  // ENOENT on machines that lack a system `rg` — notably the Windows build.
+  const extracted = ensureExtractedRipgrep()
+  if (extracted) {
+    return { mode: 'builtin', command: extracted, args: [] }
+  }
+
+  // Fallback: a sidecar rg dropped next to the executable.
   const rgName = process.platform === 'win32' ? 'rg.exe' : 'rg'
   const sidecar = path.join(path.dirname(process.execPath), rgName)
   if (existsSync(sidecar)) {
