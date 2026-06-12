@@ -88,9 +88,11 @@ The upstream Claude-in-Chrome integration depends on an unpublished Anthropic pa
 
 ## Model Providers
 
-free-code supports **five API providers** out of the box. Anthropic and OpenAI/ChatGPT
-switch live from the `/model` menu (sign in once with `/login` and/or
-`/login-chatgpt`); Bedrock, Vertex, and Foundry are selected via environment variable.
+free-code supports **Anthropic, OpenAI/ChatGPT, and any OpenAI-compatible endpoint**
+(NVIDIA NIM, OpenRouter, vLLM, Ollama, …) out of the box, plus Bedrock, Vertex, and
+Foundry. Anthropic, ChatGPT, and custom OpenAI-compatible models all switch live from
+the `/model` menu (sign in with `/login` / `/login-chatgpt`, or add an endpoint with
+`/provider`); Bedrock, Vertex, and Foundry are selected via environment variable.
 
 ### Anthropic (Direct API) -- Default
 
@@ -130,6 +132,35 @@ them per request straight from `/model`.
 
 The legacy `CLAUDE_CODE_USE_OPENAI=1` env var still works (forces OpenAI globally),
 but it's no longer necessary — per-model routing handles everything.
+
+### NVIDIA NIM & OpenAI-compatible endpoints
+
+Connect **any** OpenAI-compatible `/v1/chat/completions` backend — **NVIDIA NIM**,
+OpenRouter, Together, vLLM, Ollama, LM Studio, or your own self-hosted server —
+natively, with no proxy. free-code translates the Anthropic Messages protocol to
+chat-completions in-process (the same mechanism the ChatGPT integration uses).
+
+Add a provider with `/provider`, then pick its model from `/model`:
+
+```text
+/provider add nim nvapi-yourkey                          # NVIDIA NIM (free key at build.nvidia.com)
+/provider add custom http://localhost:11434/v1 ollama    # local Ollama / vLLM / LM Studio
+/provider list                                           # configured providers + models
+/model                                                   # pick a discovered model
+```
+
+free-code queries each backend's `/v1/models` endpoint to populate `/model`, and
+remembers any model the backend rejects so the menu self-heals. Anthropic-only
+features (extended thinking, prompt caching, effort) don't apply to these models
+and are dropped from the request automatically.
+
+> **Tool-calling is the whole ballgame.** free-code is a heavy tool user — choose
+> models with solid OpenAI function-calling (e.g. NIM's Nemotron/Llama *-tool*
+> variants). Weaker models will struggle regardless of the adapter.
+
+Keys can also come from an env var for CI/scripting (`NVIDIA_NIM_API_KEY`,
+`OPENROUTER_API_KEY`, `TOGETHER_API_KEY`, or `OPENAI_COMPAT_API_KEY`) — the
+matching preset auto-activates without `/provider`.
 
 ### AWS Bedrock
 
@@ -180,6 +211,7 @@ Supports custom deployment IDs as model names.
 |---|---|---|
 | Anthropic (default) | -- | `ANTHROPIC_API_KEY` or OAuth (`/login`) |
 | OpenAI Codex (ChatGPT) | -- (optional `CLAUDE_CODE_USE_OPENAI=1`) | OAuth (`/login-chatgpt`) |
+| OpenAI-compatible (NIM, OpenRouter, vLLM, …) | -- | `/provider` (or `*_API_KEY` env) |
 | AWS Bedrock | `CLAUDE_CODE_USE_BEDROCK=1` | AWS credentials |
 | Google Vertex AI | `CLAUDE_CODE_USE_VERTEX=1` | `gcloud` ADC |
 | Anthropic Foundry | `CLAUDE_CODE_USE_FOUNDRY=1` | `ANTHROPIC_FOUNDRY_API_KEY` |
@@ -266,6 +298,11 @@ bun run dev
 | `CLAUDE_BROWSER_EXECUTABLE` | Path to a specific Chrome/Chromium binary for `/browser` |
 | `CLAUDE_BROWSER_EXTRA_ARGS` | Extra args passed to Chrome at launch |
 | `CLAUDE_BROWSER_ACTION_TIMEOUT_MS` | Click/type auto-wait timeout (default 5000) |
+| `NVIDIA_NIM_API_KEY` | NVIDIA NIM key — auto-activates the NIM provider |
+| `OPENROUTER_API_KEY` / `TOGETHER_API_KEY` | Auto-activate the OpenRouter / Together preset |
+| `OPENAI_COMPAT_API_KEY` | Key for the generic `custom` OpenAI-compatible preset |
+| `CLAUDE_CODE_USE_OPENAI` | Force Codex/OpenAI routing globally (legacy) |
+| `CLAUDE_CODE_USE_BEDROCK` / `_USE_VERTEX` / `_USE_FOUNDRY` | Select Bedrock / Vertex / Foundry |
 
 ---
 
@@ -367,7 +404,7 @@ src/
 | **Code Search** | ripgrep (bundled) |
 | **Browser** | Chrome DevTools Protocol (native WebSocket) |
 | **Protocols** | MCP, LSP |
-| **APIs** | Anthropic Messages, OpenAI Codex, AWS Bedrock, Google Vertex AI |
+| **APIs** | Anthropic Messages, OpenAI Codex, OpenAI-compatible (NIM/OpenRouter/…), AWS Bedrock, Google Vertex AI |
 
 ---
 

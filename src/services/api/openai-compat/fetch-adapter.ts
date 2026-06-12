@@ -492,12 +492,19 @@ export function createOpenAICompatFetch(opts: {
       ) {
         recordUnsupportedOpenAICompatModel(String(body.model))
       }
+      // Friendlier hints for the common misconfigurations.
+      const hint =
+        res.status === 401 || res.status === 403
+          ? ' — check your API key (run /provider to re-add it).'
+          : res.status === 429
+            ? ' — rate limited by the provider; retry shortly.'
+            : ''
       return new Response(
         JSON.stringify({
           type: 'error',
           error: {
             type: 'api_error',
-            message: `Upstream ${res.status}: ${errText.slice(0, 500)}`,
+            message: `Upstream ${res.status}: ${errText.slice(0, 500)}${hint}`,
           },
         }),
         { status: res.status, headers: { 'Content-Type': 'application/json' } },
