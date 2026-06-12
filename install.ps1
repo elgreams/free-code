@@ -38,10 +38,15 @@ Info "Starting installation..."
 Write-Host ""
 
 # ---- system checks -------------------------------------------------------
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+$gitCmd = Get-Command git -ErrorAction SilentlyContinue
+if (-not $gitCmd) {
   Fail "git is not installed. Install Git for Windows: https://git-scm.com/download/win"
 }
-Ok "git: $(git --version)"
+# Capture git's full path now and call it explicitly later: Bun's installer
+# (run via iex below) rewrites $env:Path from the registry, which can drop a
+# git entry that only lived on the session PATH — breaking a later `git clone`.
+$Git = $gitCmd.Source
+Ok "git: $(& $Git --version)"
 
 $bunOk = $false
 if (Get-Command bun -ErrorAction SilentlyContinue) {
@@ -72,12 +77,12 @@ if (Test-Path $InstallDir) {
   Warn "$InstallDir already exists"
   if (Test-Path (Join-Path $InstallDir '.git')) {
     Info "Pulling latest changes..."
-    git -C $InstallDir pull --ff-only origin main 2>$null
+    & $Git -C $InstallDir pull --ff-only origin main 2>$null
     if ($LASTEXITCODE -ne 0) { Warn "Pull failed, continuing with existing copy" }
   }
 } else {
   Info "Cloning repository..."
-  git clone --depth 1 $Repo $InstallDir
+  & $Git clone --depth 1 $Repo $InstallDir
 }
 Ok "Source: $InstallDir"
 
