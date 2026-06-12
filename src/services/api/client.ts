@@ -36,6 +36,12 @@ import {
   isEnvTruthy,
 } from '../../utils/envUtils.js'
 import { createCodexFetch, isCodexModel } from './codex-fetch-adapter.js'
+import { createOpenAICompatFetch } from './openai-compat/fetch-adapter.js'
+import {
+  getProviderForModel,
+  isOpenAICompatModel,
+  resolveApiKey,
+} from './openai-compat/registry.js'
 
 /**
  * Environment variables for different client types:
@@ -303,6 +309,37 @@ export async function getAnthropicClient({
     }
     // we have always been lying about the return type - this doesn't support batching or models
     return new AnthropicVertex(vertexArgs) as unknown as Anthropic
+  }
+
+  // ── OpenAI-compatible custom provider (NIM, OpenRouter, vLLM, …) ───
+  // If the selected model belongs to a configured custom provider, route to it
+  // via the chat-completions fetch adapter. Checked before Codex/Anthropic
+  // because a custom model id never matches those paths (verified), so a user
+  // logged into Claude/ChatGPT can still pick a custom model and have it route
+  // here. Side queries carrying a Claude/Haiku model fall through unaffected.
+  if (model && isOpenAICompatModel(model)) {
+    const provider = getProviderForModel(model)!
+    const compatKey = resolveApiKey(provider)
+    if (!compatKey) {
+      throw new Error(
+        `No API key configured for provider "${provider.name}". ` +
+          (provider.apiKeyEnv
+            ? `Set ${provider.apiKeyEnv}, or run /provider to add a key.`
+            : 'Run /provider to add a key.'),
+      )
+    }
+    const compatFetch = createOpenAICompatFetch({
+      baseURL: provider.baseURL,
+      apiKey: compatKey,
+      headers: provider.headers,
+    })
+    const clientConfig: ConstructorParameters<typeof Anthropic>[0] = {
+      apiKey: 'openai-compat-placeholder', // SDK requires a key; the adapter handles auth
+      ...ARGS,
+      fetch: compatFetch as unknown as typeof globalThis.fetch,
+      ...(isDebugToStdErr() && { logger: createStderrLogger() }),
+    }
+    return new Anthropic(clientConfig)
   }
 
   // ── Codex (OpenAI) provider via fetch adapter ─────────────────────
