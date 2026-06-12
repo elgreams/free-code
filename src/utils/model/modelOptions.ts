@@ -37,6 +37,7 @@ import {
 import { has1mContext } from '../context.js'
 import { getGlobalConfig } from '../config.js'
 import { CODEX_MODELS } from '../../services/api/codex-fetch-adapter.js'
+import { listOpenAICompatModels } from '../../services/api/openai-compat/registry.js'
 import { getResolvedCodexModelIds } from './codexModels.js'
 
 // @[MODEL LAUNCH]: Update all the available and default model option strings below.
@@ -312,6 +313,19 @@ function getCodexModelOptions(): ModelOption[] {
       descriptionForModel: `${label} (ChatGPT/Codex) - ${description}`,
     }
   })
+}
+
+// Custom OpenAI-compatible provider models (NIM, OpenRouter, vLLM, …), surfaced
+// from the registry so they're selectable in /model. See openai-compat/.
+function getOpenAICompatModelOptions(): ModelOption[] {
+  return listOpenAICompatModels().map(m => ({
+    value: m.id as ModelOption['value'],
+    label: m.label,
+    description: m.description
+      ? `Custom · ${m.description}`
+      : 'Custom OpenAI-compatible model',
+    descriptionForModel: `${m.label} (custom OpenAI-compatible)${m.description ? ` - ${m.description}` : ''}`,
+  }))
 }
 
 function getMaxOpusOption(fastMode = false): ModelOption {
@@ -597,6 +611,14 @@ function getKnownModelOption(model: string): ModelOption | null {
 
 export function getModelOptions(fastMode = false): ModelOption[] {
   const options = getModelOptionsBase(fastMode)
+
+  // Custom OpenAI-compatible provider models (added here so every menu branch
+  // surfaces them uniformly).
+  for (const opt of getOpenAICompatModelOptions()) {
+    if (!options.some(existing => existing.value === opt.value)) {
+      options.push(opt)
+    }
+  }
 
   // Add the custom model from the ANTHROPIC_CUSTOM_MODEL_OPTION env var
   const envCustomModel = process.env.ANTHROPIC_CUSTOM_MODEL_OPTION

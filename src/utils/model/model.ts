@@ -6,6 +6,7 @@
  * during dead code elimination
  */
 import { getMainLoopModelOverride } from '../../bootstrap/state.js'
+import { isOpenAICompatModel } from '../../services/api/openai-compat/registry.js'
 import {
   getSubscriptionType,
   isClaudeAISubscriber,
@@ -225,6 +226,13 @@ export function getDefaultMainLoopModel(): ModelName {
  * module top-level (see MODEL_COSTS in modelCost.ts).
  */
 export function firstPartyNameToCanonical(name: ModelName): ModelShortName {
+  // Custom OpenAI-compatible provider models are their own canonical — guard
+  // before the Claude/GPT pattern matching (and before lowercasing, since ids
+  // can be case-sensitive) so a vendor-prefixed id like 'anthropic/claude-3.5'
+  // from OpenRouter can't truncate into a Claude cost/identity key.
+  if (isOpenAICompatModel(name)) {
+    return name as ModelShortName
+  }
   name = name.toLowerCase()
   // Special cases for Claude 4+ models to differentiate versions
   // Order matters: check more specific versions first (4-5 before 4)
