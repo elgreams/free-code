@@ -10,6 +10,7 @@ import {
   SPECIES,
   STAT_NAMES,
   type CompanionBones,
+  type SavedCompanion,
   type Species,
   type StoredCompanion,
 } from '../../buddy/types.js'
@@ -93,6 +94,30 @@ function shinyLabel(): string {
   return 'natural roll'
 }
 
+function normalizeSaveLabel(label: string): string {
+  return label.trim().replace(/\s+/g, ' ').slice(0, 32)
+}
+
+function saveKey(saved: SavedCompanion): string {
+  return saved.label.toLowerCase()
+}
+
+function findSavedCompanion(
+  saved: SavedCompanion[],
+  query: string,
+): SavedCompanion | undefined {
+  const normalized = query.trim().toLowerCase()
+  if (!normalized) return undefined
+  return saved.find(s => s.id === normalized || saveKey(s) === normalized)
+}
+
+function formatSavedList(saved: SavedCompanion[]): string {
+  if (saved.length === 0) return 'No saved companions yet. Use `/buddy save [name]`.'
+  return saved
+    .map(s => `- **${s.label}** (${s.id}) — saved ${new Date(s.savedAt).toLocaleDateString()}`)
+    .join('\n')
+}
+
 // A fenced text card: sprite art + name/rarity + stat bars + personality.
 function formatCard(
   name: string,
@@ -140,7 +165,7 @@ export const call: LocalJSXCommandCall = async (onDone, context, args) => {
 
   if (sub === 'cheat') {
     return say(
-      `Buddy cheat menu\n\nCurrent mode: **${overrideLabel()}**\nShiny mode: **${shinyLabel()}**\n\nCommands:\n- \`/buddy list\` — show available species\n- \`/buddy select <species>\` — choose a companion species\n- \`/buddy reroll\` — roll a new deterministic companion\n- \`/buddy shiny\` — toggle shiny on/off\n- \`/buddy shiny reset\` — return to natural shiny roll\n- \`/buddy default\` — reset to account default\n- \`/buddy current\` — show current companion`,
+      `Buddy cheat menu\n\nCurrent mode: **${overrideLabel()}**\nShiny mode: **${shinyLabel()}**\n\nCommands:\n- \`/buddy list\` — show available species\n- \`/buddy select <species>\` — choose a companion species\n- \`/buddy reroll\` — roll a new deterministic companion\n- \`/buddy save [name]\` — save the current companion\n- \`/buddy saved\` — list saved companions\n- \`/buddy load <name|id>\` — restore a saved companion\n- \`/buddy delete <name|id>\` — delete a saved companion\n- \`/buddy shiny\` — toggle shiny on/off\n- \`/buddy shiny reset\` — return to natural shiny roll\n- \`/buddy default\` — reset to account default\n- \`/buddy current\` — show current companion`,
     )
   }
 
@@ -210,11 +235,71 @@ export const call: LocalJSXCommandCall = async (onDone, context, args) => {
     )
   }
 
+  if (sub === 'saved' || sub === 'saves') {
+    return say(`Saved companions:\n\n${formatSavedList(getGlobalConfig().companionSaved ?? [])}`)
+  }
+
+  if (sub === 'save') {
+    const config = getGlobalConfig()
+    if (!config.companion) {
+      return say('No companion to save yet. Run `/buddy` to hatch one.')
+    }
+    const label = normalizeSaveLabel(restStr || config.companion.name)
+    if (!label) return say('Usage: `/buddy save [name]`')
+
+    const saved: SavedCompanion = {
+      id: randomBytes(3).toString('hex'),
+      label,
+      companion: config.companion,
+      override: config.companionOverride,
+      shinyOverride: config.companionShinyOverride,
+      savedAt: Date.now(),
+    }
+    saveGlobalConfig(c => {
+      const existing = c.companionSaved ?? []
+      const withoutSameLabel = existing.filter(s => saveKey(s) !== saveKey(saved))
+      return { ...c, companionSaved: [...withoutSameLabel, saved] }
+    })
+    return say(`Saved **${label}** (${saved.id}).`)
+  }
+
+  if (sub === 'load') {
+    const config = getGlobalConfig()
+    const saved = findSavedCompanion(config.companionSaved ?? [], restStr)
+    if (!saved) {
+      return say(`Usage: \`/buddy load <name|id>\`\n\n${formatSavedList(config.companionSaved ?? [])}`)
+    }
+    saveGlobalConfig(c => ({
+      ...c,
+      companion: saved.companion,
+      companionOverride: saved.override,
+      companionShinyOverride: saved.shinyOverride,
+    }))
+    const companion = getCompanion()
+    if (!companion) return say(`Loaded **${saved.label}**.`)
+    return say(
+      `Loaded **${saved.label}**.\n\n${formatCard(companion.name, companion.personality, companion)}`,
+    )
+  }
+
+  if (sub === 'delete' || sub === 'remove') {
+    const config = getGlobalConfig()
+    const saved = findSavedCompanion(config.companionSaved ?? [], restStr)
+    if (!saved) {
+      return say(`Usage: \`/buddy delete <name|id>\`\n\n${formatSavedList(config.companionSaved ?? [])}`)
+    }
+    saveGlobalConfig(c => ({
+      ...c,
+      companionSaved: (c.companionSaved ?? []).filter(s => s.id !== saved.id),
+    }))
+    return say(`Deleted saved companion **${saved.label}** (${saved.id}).`)
+  }
+
   // Hatch when there's no companion yet and no (or an explicit "hatch") arg.
   if (!stored && (sub === '' || sub === 'hatch')) {
     const { soul, bones } = hatchCompanion()
     return say(
-      `🥚✨ A companion hatched!\n\n${formatCard(soul.name, soul.personality, bones)}\n\nIt now lives beside your prompt. Try \`/buddy pet\`, \`/buddy rename <name>\`, \`/buddy mute\`, \`/buddy select <species>\`, \`/buddy reroll\`, or \`/buddy release\`.`,
+      `🥚✨ A companion hatched!\n\n${formatCard(soul.name, soul.personality, bones)}\n\nIt now lives beside your prompt. Try \`/buddy pet\`, \`/buddy rename <name>\`, \`/buddy save [name]\`, \`/buddy select <species>\`, \`/buddy reroll\`, or \`/buddy release\`.`,
     )
   }
   if (!stored) {
@@ -262,7 +347,7 @@ export const call: LocalJSXCommandCall = async (onDone, context, args) => {
       return say(`🔊 ${companion.name} is back.`)
     default:
       return say(
-        `Unknown subcommand "${sub}". Try: \`/buddy\` (show), \`pet\`, \`rename <name>\`, \`list\`, \`select <species>\`, \`reroll\`, \`shiny\`, \`default\`, \`release\`, \`mute\`, \`unmute\`.`,
+        `Unknown subcommand "${sub}". Try: \`/buddy\` (show), \`pet\`, \`rename <name>\`, \`save [name]\`, \`saved\`, \`load <name|id>\`, \`delete <name|id>\`, \`list\`, \`select <species>\`, \`reroll\`, \`shiny\`, \`default\`, \`release\`, \`mute\`, \`unmute\`.`,
       )
   }
 }

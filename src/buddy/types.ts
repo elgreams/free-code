@@ -77,6 +77,15 @@ export type CompanionOverride =
   | { mode: 'selected'; selectedSpecies: Species }
   | { mode: 'rerolled'; rerollSeed: string }
 
+export type SavedCompanion = {
+  id: string
+  label: string
+  companion: StoredCompanion
+  override?: CompanionOverride
+  shinyOverride?: boolean
+  savedAt: number
+}
+
 export const EYES = ['·', '✦', '×', '◉', '@', '°'] as const
 export type Eye = (typeof EYES)[number]
 

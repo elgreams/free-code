@@ -315,6 +315,7 @@ export type GlobalConfig = {
   companion?: import('../buddy/types.js').StoredCompanion
   companionOverride?: import('../buddy/types.js').CompanionOverride
   companionShinyOverride?: boolean
+  companionSaved?: import('../buddy/types.js').SavedCompanion[]
   companionMuted?: boolean
 
   // Feedback survey tracking

@@ -2,14 +2,16 @@ import { c as _c } from "react/compiler-runtime";
 import { feature } from 'bun:bundle';
 import figures from 'figures';
 import React, { useEffect, useRef, useState } from 'react';
+import { ShimmerChar } from '../components/Spinner/ShimmerChar.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { stringWidth } from '../ink/stringWidth.js';
-import { Box, Text } from '../ink.js';
+import { Box, Text, useAnimationFrame } from '../ink.js';
 import { useAppState, useSetAppState } from '../state/AppState.js';
 import type { AppState } from '../state/AppStateStore.js';
 import { getGlobalConfig } from '../utils/config.js';
 import { isFullscreenActive } from '../utils/fullscreen.js';
 import type { Theme } from '../utils/theme.js';
+import { getRainbowColor } from '../utils/thinking.js';
 import { getCompanion } from './companion.js';
 import { renderFace, renderSprite, spriteFrameCount } from './sprites.js';
 import { RARITY_COLORS } from './types.js';
@@ -26,12 +28,13 @@ const IDLE_SEQUENCE = [0, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 2, 0, 0, 0];
 const H = figures.heart;
 const PET_HEARTS = [`   ${H}    ${H}   `, `  ${H}  ${H}   ${H}  `, ` ${H}   ${H}  ${H}   `, `${H}  ${H}      ${H} `, '·    ·   ·  '];
 
-// Shiny companions shimmer through a rainbow instead of their flat rarity
-// color. A per-line offset plus the render tick produces a slow diagonal wave
-// (8 colors at 500ms/tick ≈ a 4s cycle).
-const SHINY_COLORS = ['red_FOR_SUBAGENTS_ONLY', 'orange_FOR_SUBAGENTS_ONLY', 'yellow_FOR_SUBAGENTS_ONLY', 'green_FOR_SUBAGENTS_ONLY', 'cyan_FOR_SUBAGENTS_ONLY', 'blue_FOR_SUBAGENTS_ONLY', 'purple_FOR_SUBAGENTS_ONLY', 'pink_FOR_SUBAGENTS_ONLY'] as const satisfies readonly (keyof Theme)[];
-function shinyColor(offset: number, tick: number): keyof Theme {
-  return SHINY_COLORS[(offset + tick) % SHINY_COLORS.length]!;
+function ShinyText(t0) {
+  const {
+    text,
+    startIndex,
+    glimmerIndex
+  } = t0;
+  return <Text>{text.split('').map((char, i) => <ShimmerChar key={i} char={char} index={startIndex + i} glimmerIndex={glimmerIndex} messageColor={getRainbowColor(startIndex + i)} shimmerColor={getRainbowColor(startIndex + i, true)} />)}</Text>;
 }
 function wrap(text: string, width: number): string[] {
   const words = text.split(' ');
@@ -189,6 +192,7 @@ export function CompanionSprite(): React.ReactNode {
   const {
     columns
   } = useTerminalSize();
+  const [shimmerRef, shimmerTime] = useAnimationFrame(50);
   const [tick, setTick] = useState(0);
   const lastSpokeTick = useRef(0);
   // Sync-during-render (not useEffect) so the first post-pet render already
@@ -235,12 +239,12 @@ export function CompanionSprite(): React.ReactNode {
   if (columns < MIN_COLS_FOR_FULL_SPRITE) {
     const quip = reaction && reaction.length > NARROW_QUIP_CAP ? reaction.slice(0, NARROW_QUIP_CAP - 1) + '…' : reaction;
     const label = quip ? `"${quip}"` : focused ? ` ${companion.name} ` : companion.name;
-    return <Box paddingX={1} alignSelf="flex-end">
+    const face = renderFace(companion);
+    const glimmerIndex = -10 + Math.floor(shimmerTime / 50) % (face.length + 20);
+    return <Box ref={shimmerRef} paddingX={1} alignSelf="flex-end">
         <Text>
           {petting && <Text color="autoAccept">{figures.heart} </Text>}
-          <Text bold color={companion.shiny ? shinyColor(0, tick) : color}>
-            {renderFace(companion)}
-          </Text>{' '}
+          {companion.shiny ? <ShinyText text={face} startIndex={0} glimmerIndex={glimmerIndex} /> : <Text bold color={color}>{face}</Text>}{' '}
           <Text italic dimColor={!focused && !reaction} bold={focused} inverse={focused && !reaction} color={reaction ? fading ? 'inactive' : color : focused ? color : undefined}>
             {label}
           </Text>
@@ -266,15 +270,25 @@ export function CompanionSprite(): React.ReactNode {
   const body = renderSprite(companion, spriteFrame).map(line => blink ? line.replaceAll(companion.eye, '-') : line);
   const sprite = heartFrame ? [heartFrame, ...body] : body;
 
+  const spriteLineWidth = Math.max(...sprite.map(line => line.length));
+  const glimmerIndex = -10 + Math.floor(shimmerTime / 50) % (spriteLineWidth + 20);
+  const spriteLines = sprite.map((line, i) => {
+    if (i === 0 && heartFrame) {
+      return <Text key={i} color="autoAccept">{line}</Text>;
+    }
+    if (companion.shiny) {
+      return <ShinyText key={i} text={line} startIndex={0} glimmerIndex={glimmerIndex} />;
+    }
+    return <Text key={i} color={color}>{line}</Text>;
+  });
+
   // Name row doubles as hint row — unfocused shows dim name + ↓ discovery,
   // focused shows inverse name. The enter-to-open hint lives in
   // PromptInputFooter's right column so this row stays one line and the
   // sprite doesn't jump up when selected. flexShrink=0 stops the
   // inline-bubble row wrapper from squeezing the sprite to fit.
-  const spriteColumn = <Box flexDirection="column" flexShrink={0} alignItems="center" width={colWidth}>
-      {sprite.map((line, i) => <Text key={i} color={i === 0 && heartFrame ? 'autoAccept' : companion.shiny ? shinyColor(i, tick) : color}>
-          {line}
-        </Text>)}
+  const spriteColumn = <Box ref={companion.shiny ? shimmerRef : undefined} flexDirection="column" flexShrink={0} alignItems="center" width={colWidth}>
+      {spriteLines}
       <Text italic bold={focused} dimColor={!focused} color={focused ? color : undefined} inverse={focused}>
         {focused ? ` ${companion.name} ` : companion.name}
       </Text>
