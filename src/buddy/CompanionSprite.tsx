@@ -25,6 +25,14 @@ const IDLE_SEQUENCE = [0, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 2, 0, 0, 0];
 // Hearts float up-and-out over 5 ticks (~2.5s). Prepended above the sprite.
 const H = figures.heart;
 const PET_HEARTS = [`   ${H}    ${H}   `, `  ${H}  ${H}   ${H}  `, ` ${H}   ${H}  ${H}   `, `${H}  ${H}      ${H} `, '·    ·   ·  '];
+
+// Shiny companions shimmer through a rainbow instead of their flat rarity
+// color. A per-line offset plus the render tick produces a slow diagonal wave
+// (8 colors at 500ms/tick ≈ a 4s cycle).
+const SHINY_COLORS = ['red_FOR_SUBAGENTS_ONLY', 'orange_FOR_SUBAGENTS_ONLY', 'yellow_FOR_SUBAGENTS_ONLY', 'green_FOR_SUBAGENTS_ONLY', 'cyan_FOR_SUBAGENTS_ONLY', 'blue_FOR_SUBAGENTS_ONLY', 'purple_FOR_SUBAGENTS_ONLY', 'pink_FOR_SUBAGENTS_ONLY'] as const satisfies readonly (keyof Theme)[];
+function shinyColor(offset: number, tick: number): keyof Theme {
+  return SHINY_COLORS[(offset + tick) % SHINY_COLORS.length]!;
+}
 function wrap(text: string, width: number): string[] {
   const words = text.split(' ');
   const lines: string[] = [];
@@ -230,7 +238,7 @@ export function CompanionSprite(): React.ReactNode {
     return <Box paddingX={1} alignSelf="flex-end">
         <Text>
           {petting && <Text color="autoAccept">{figures.heart} </Text>}
-          <Text bold color={color}>
+          <Text bold color={companion.shiny ? shinyColor(0, tick) : color}>
             {renderFace(companion)}
           </Text>{' '}
           <Text italic dimColor={!focused && !reaction} bold={focused} inverse={focused && !reaction} color={reaction ? fading ? 'inactive' : color : focused ? color : undefined}>
@@ -264,7 +272,7 @@ export function CompanionSprite(): React.ReactNode {
   // sprite doesn't jump up when selected. flexShrink=0 stops the
   // inline-bubble row wrapper from squeezing the sprite to fit.
   const spriteColumn = <Box flexDirection="column" flexShrink={0} alignItems="center" width={colWidth}>
-      {sprite.map((line, i) => <Text key={i} color={i === 0 && heartFrame ? 'autoAccept' : color}>
+      {sprite.map((line, i) => <Text key={i} color={i === 0 && heartFrame ? 'autoAccept' : companion.shiny ? shinyColor(i, tick) : color}>
           {line}
         </Text>)}
       <Text italic bold={focused} dimColor={!focused} color={focused ? color : undefined} inverse={focused}>
