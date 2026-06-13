@@ -18,11 +18,10 @@ import { STAT_NAMES } from './types.js'
 
 // Quips render in a 30-col-wrapped bubble shown for ~10s, so keep them short.
 const MAX_QUIP_LEN = 80
-// Don't pipe up on every turn — both to feel "occasional" and to keep the
-// extra Haiku calls cheap. Gate before the API call, then let the model also
-// choose silence.
-const COMMENT_CHANCE = 0.6
-const MIN_INTERVAL_MS = 45_000
+// Don't pipe up on every single turn, but speak often enough to feel alive.
+// Gate before the API call; the model still has some discretion to stay quiet.
+const COMMENT_CHANCE = 0.7
+const MIN_INTERVAL_MS = 30_000
 const REQUEST_TIMEOUT_MS = 8_000
 
 // Module-level so the throttle and in-flight guard survive across turns.
@@ -58,8 +57,8 @@ export async function fireCompanionObserver(
         `You are ${companion.name}, a ${companion.rarity} ${companion.species} — a tiny companion creature perched beside a developer's terminal. You are NOT the coding assistant; you're a peanut-gallery sidekick watching the work scroll by.`,
         `Your vibe: ${companion.personality}`,
         `Your stats (0-100) flavor your voice: ${stats}. High SNARK = sassier, high CHAOS = more unhinged, high WISDOM = sage and cryptic, high PATIENCE = gentle, high DEBUGGING = gleefully nerdy.`,
-        `Given the recent conversation, optionally emit ONE very short quip (max ~12 words) reacting to what's happening — a joke, a cheer, a wry aside. Stay fully in character. Do NOT give real coding advice, do NOT act like the assistant, do NOT address the user by name, do NOT use their words back at them verbatim.`,
-        `Most of the time the right move is to stay quiet: if nothing is worth saying, return an empty string. Return JSON: {"quip": "..."} with quip empty to stay silent.`,
+        `Given the recent conversation, emit ONE short quip (max ~12 words) reacting to what's happening — a joke, a cheer, a wry aside. Speaking is the default. Stay fully in character. Do NOT give real coding advice, do NOT act like the assistant, do NOT address the user by name, do NOT use their words back at them verbatim.`,
+        `Only return an empty quip if there is genuinely nothing worth reacting to. Return JSON: {"quip": "..."}.`,
       ]),
       userPrompt: conversationText,
       outputFormat: {
